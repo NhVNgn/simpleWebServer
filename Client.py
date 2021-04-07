@@ -1,6 +1,3 @@
-# Include Python's Socket Library
-from socket import *
-
 # Define Server IP Address and Port
 # serverName = 'localhost'
 # serverPort = 12000
@@ -25,20 +22,21 @@ from socket import *
 # Close the client socket
 # clientSocket.close()
 
-import socket
-serverPort = 8000
-host = gethostname().split('.')[0]
-clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-clientSocket.connect((host, serverPort))
-cmd_OK = 'GET {}:{}/test.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
-cmd_not_found = 'GET {}:{}/dogg.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
-cmd_bad_req = 'G@ETT {}:{}/test.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
-clientSocket.send(cmd_OK)
+from socket import *
+import Constants
 
-while True:
-    data = clientSocket.recv(512)
-    if len(data) < 1:
-        break
-    print(data.decode(),end='')
 
-clientSocket.close()
+HOST = gethostname().split('.')[0]
+CMD_OK = 'GET {}:{}/test.html HTTP/1.1\r\n\r\n'.format(HOST, Constants.SERVER_PORT).encode()
+CMD_NOT_FOUND = 'GET {}:{}/dogg.html HTTP/1.1\r\n\r\n'.format(HOST, Constants.SERVER_PORT).encode()
+CMD_BAD_REQ = 'G@ETT {}:{}/test.html HTTP/1.1\r\n\r\n'.format(HOST, Constants.SERVER_PORT).encode()
+
+with socket(AF_INET, SOCK_STREAM) as clientSocket:
+    clientSocket.connect((HOST, Constants.SERVER_PORT))
+    clientSocket.send(CMD_OK)
+
+    while True:
+        data = clientSocket.recv(512)
+        if len(data) < 1:
+            break
+        print(data.decode(), end='')
