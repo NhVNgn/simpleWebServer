@@ -27,10 +27,13 @@ from socket import *
 
 import socket
 serverPort = 8000
+host = gethostname().split('.')[0]
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-clientSocket.connect(('localhost', serverPort))
-cmd = 'GET localhost:8000/tet.html HTTP/1.1\r\n\r\n'.encode()
-clientSocket.send(cmd)
+clientSocket.connect((host, serverPort))
+cmd_OK = 'GET {}:{}/test.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
+cmd_not_found = 'GET {}:{}/dogg.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
+cmd_bad_req = 'G@ETT {}:{}/test.html HTTP/1.1\r\n\r\n'.format(host, serverPort).encode()
+clientSocket.send(cmd_OK)
 
 while True:
     data = clientSocket.recv(512)
