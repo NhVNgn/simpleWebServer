@@ -112,6 +112,6 @@ class Server:
             print(exc)
             print(traceback.format_exc())
             sys.exit(1)
-
+        self.serverSocket.close()
 tcp_server = Server()
 tcp_server.start()
