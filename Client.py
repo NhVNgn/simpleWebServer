@@ -11,11 +11,11 @@ CMD_OK = 'GET {}/test.html HTTP/1.1\r\n\r\n'.format(SERVER_URL).encode()
 CMD_NOT_FOUND = 'GET {}/dogg.html HTTP/1.1\r\n\r\n'.format(SERVER_URL).encode()
 CMD_BAD_REQ = 'G@ETT {}/test.html HTTP/1.1\r\n\r\n'.format(SERVER_URL).encode()
 CMD_MODIFIED = 'GET {}/test.html HTTP/1.1\r\n{}\r\n\r\n'.format(SERVER_URL, IF_MODIFIED_HEADER).encode()
-
+CMD_TIMEOUT = 'GET {}/80mb-file.html HTTP/1.1\r\n\r\n'.format(SERVER_URL).encode()
 if __name__ == '__main__':
     with socket(AF_INET, SOCK_STREAM) as clientSocket:
         clientSocket.connect((HOST, SERVER_PORT))
-        clientSocket.send(CMD_MODIFIED)
+        clientSocket.send(CMD_TIMEOUT)
 
         while True:
             data = clientSocket.recv(512)

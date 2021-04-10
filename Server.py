@@ -6,7 +6,8 @@ from http import HTTPStatus
 from io import BytesIO
 from os import stat
 from socket import *
-
+from socket import timeout
+import time
 DATE_TIME_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
 
 TEST_HTML = 'test.html'
@@ -48,8 +49,15 @@ def read_file(headers, requested_file_name, http_method_name):
                 if_modified_since = datetime.strptime(headers[IF_MODIFIED_SINCE], DATE_TIME_FORMAT)
                 if last_modified <= if_modified_since:
                     return create_header(HTTPStatus.NOT_MODIFIED)
-            response = create_header(HTTPStatus.OK)
+            
+            t0 = time.time()
             html_content = file_in.read()
+            print("reading file done")
+            t1 = time.time()
+            if t1 - t0 >= 0.06:
+                response = create_header(HTTPStatus.REQUEST_TIMEOUT)
+            else:
+                response = create_header(HTTPStatus.OK)
     except Exception as exc:
         print("Exception:", exc)
         response = create_header(HTTPStatus.NOT_FOUND)
@@ -92,8 +100,17 @@ class Server:
                         requested_file_name = start_line[1]
                         response = read_file(request_headers, requested_file_name, http_method_name)
                         print(response)
-                        client_socket.sendall(response.encode())
-                        client_socket.shutdown(SHUT_WR)
+                        
+                        try: # socket.timeout exception will be thrown if exceeding 2 sec
+                            client_socket.settimeout(2)
+                            client_socket.sendall(response.encode())
+                            client_socket.settimeout(None)
+                            client_socket.shutdown(SHUT_WR)
+                        except:
+                            body_response = "<html><body><h1>Error 408: Request Timeout</h1></body></html>"
+                            client_socket.sendall(body_response.encode())
+                            client_socket.shutdown(SHUT_WR)
+                    
                     else:  # bad request
                         response = create_header(400)
                         response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
@@ -107,7 +124,7 @@ class Server:
             print(exc)
             print(traceback.format_exc())
             sys.exit(1)
-
+        client_socket.close()
     def stop(self):
         self.isRunning = False
 
