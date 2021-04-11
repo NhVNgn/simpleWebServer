@@ -7,7 +7,6 @@ from io import BytesIO
 from os import stat
 from socket import *
 from socket import timeout
-import time
 DATE_TIME_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
 
 TEST_HTML = 'test.html'
@@ -50,14 +49,8 @@ def read_file(headers, requested_file_name, http_method_name):
                 if last_modified <= if_modified_since:
                     return create_header(HTTPStatus.NOT_MODIFIED)
             
-            t0 = time.time()
             html_content = file_in.read()
-            print("reading file done")
-            t1 = time.time()
-            if t1 - t0 >= 0.06:
-                response = create_header(HTTPStatus.REQUEST_TIMEOUT)
-            else:
-                response = create_header(HTTPStatus.OK)
+            response = create_header(HTTPStatus.OK)
     except Exception as exc:
         print("Exception:", exc)
         response = create_header(HTTPStatus.NOT_FOUND)
@@ -84,38 +77,37 @@ class Server:
 
                 while self.isRunning:
                     client_socket, client_address = serverSocket.accept()
-                    request = client_socket.recv(2048).decode().split(CRLF)
-                    request_headers = BytesParser().parsebytes(request[1].encode())
-                    start_line = request[0].split(' ')
-                    http_method_name = start_line[0]
+                    client_socket.settimeout(5)
+                    try:
+                        request = client_socket.recv(2048).decode().split(CRLF)
+                        request_headers = BytesParser().parsebytes(request[1].encode())
+                        start_line = request[0].split(' ')
+                        http_method_name = start_line[0]
+                        # print http body
+                        decoded_msg = request[2]
+                        if len(decoded_msg) > 0:
+                            for i in range(0, len(decoded_msg)):
+                                print("decoded msg: ", decoded_msg[i])
+                            print("---------------------------------")
 
-                    # print http body
-                    decoded_msg = request[2]
-                    if len(decoded_msg) > 0:
-                        for i in range(0, len(decoded_msg)):
-                            print("decoded msg: ", decoded_msg[i])
-                        print("---------------------------------")
-
-                    if http_method_name == GET or http_method_name == HEAD:
-                        requested_file_name = start_line[1]
-                        response = read_file(request_headers, requested_file_name, http_method_name)
-                        print(response)
-                        
-                        try: # socket.timeout exception will be thrown if exceeding 2 sec
-                            client_socket.settimeout(2)
+                        if http_method_name == GET or http_method_name == HEAD:
+                            requested_file_name = start_line[1]
+                            response = read_file(request_headers, requested_file_name, http_method_name)
+                            print(response)
                             client_socket.sendall(response.encode())
-                            client_socket.settimeout(None)
                             client_socket.shutdown(SHUT_WR)
-                        except:
-                            body_response = "<html><body><h1>Error 408: Request Timeout</h1></body></html>"
-                            client_socket.sendall(body_response.encode())
+                        else:  # bad request
+                            response = create_header(400)
+                            response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
+                            client_socket.sendall(response.encode())
                             client_socket.shutdown(SHUT_WR)
-                    
-                    else:  # bad request
-                        response = create_header(400)
-                        response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
-                        client_socket.sendall(response.encode())
+                    except timeout:
+                        print("408 Request Timed Out")
+                        timeout_header = create_header(HTTPStatus.REQUEST_TIMEOUT)
+                        client_socket.sendall(timeout_header.encode())
                         client_socket.shutdown(SHUT_WR)
+
+                   
 
         except KeyboardInterrupt:
             print("\nShutting down...\n")
