@@ -7,6 +7,9 @@ from io import BytesIO
 from os import stat
 from socket import *
 from socket import timeout
+import threading
+from threading import Thread
+from _thread import *
 DATE_TIME_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
 
 TEST_HTML = 'test.html'
@@ -18,6 +21,8 @@ SERVER_PORT = 8000
 CHUNK_SIZE = 2048
 HTTP_VERSION = 1.1
 CRLF = '\r\n'
+thread_lock = threading.Lock()
+threads = []
 
 
 def create_header(code):
@@ -41,14 +46,16 @@ def read_file(headers, requested_file_name, http_method_name):
         requested_file_name = TEST_HTML
 
     try:
-        last_modified = datetime.fromtimestamp(stat(requested_file_name).st_mtime)
+        last_modified = datetime.fromtimestamp(
+            stat(requested_file_name).st_mtime)
         with open(requested_file_name) as file_in:
             if IF_MODIFIED_SINCE in headers and IF_NONE_MATCH not in headers:
                 # Check last modified date.
-                if_modified_since = datetime.strptime(headers[IF_MODIFIED_SINCE], DATE_TIME_FORMAT)
+                if_modified_since = datetime.strptime(
+                    headers[IF_MODIFIED_SINCE], DATE_TIME_FORMAT)
                 if last_modified <= if_modified_since:
                     return create_header(HTTPStatus.NOT_MODIFIED)
-            
+
             html_content = file_in.read()
             response = create_header(HTTPStatus.OK)
     except Exception as exc:
@@ -72,54 +79,64 @@ class Server:
         try:
             with socket(AF_INET, SOCK_STREAM) as serverSocket:
                 serverSocket.bind((self.host, self.serverPort))
-                print("Starting server {}:{}".format(self.host, self.serverPort))
+                print("Starting server {}:{}".format(
+                    self.host, self.serverPort))
                 serverSocket.listen(5)
 
                 while self.isRunning:
                     client_socket, client_address = serverSocket.accept()
-                    client_socket.settimeout(5)
-                    try:
-                        request = client_socket.recv(2048).decode().split(CRLF)
-                        request_headers = BytesParser().parsebytes(request[1].encode())
-                        start_line = request[0].split(' ')
-                        http_method_name = start_line[0]
-                        # print http body
-                        decoded_msg = request[2]
-                        if len(decoded_msg) > 0:
-                            for i in range(0, len(decoded_msg)):
-                                print("decoded msg: ", decoded_msg[i])
-                            print("---------------------------------")
-
-                        if http_method_name == GET or http_method_name == HEAD:
-                            requested_file_name = start_line[1]
-                            response = read_file(request_headers, requested_file_name, http_method_name)
-                            print(response)
-                            client_socket.sendall(response.encode())
-                            client_socket.shutdown(SHUT_WR)
-                        else:  # bad request
-                            response = create_header(400)
-                            response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
-                            client_socket.sendall(response.encode())
-                            client_socket.shutdown(SHUT_WR)
-                    except timeout:
-                        print("408 Request Timed Out")
-                        timeout_header = create_header(HTTPStatus.REQUEST_TIMEOUT)
-                        client_socket.sendall(timeout_header.encode())
-                        client_socket.shutdown(SHUT_WR)
-
-                   
-
+                    newServerThread = threading.Thread(target=newTCPServerThread, args=[client_socket,])
+                    newServerThread.start()
+                    threads.append(newServerThread)
+                    
         except KeyboardInterrupt:
             print("\nShutting down...\n")
+            for t in threads:
+                t.join()
         except Exception as exc:
             print("Error: \n")
             print(exc)
             print(traceback.format_exc())
             sys.exit(1)
         client_socket.close()
+
     def stop(self):
         self.isRunning = False
 
+
+def newTCPServerThread(client_socket):
+    client_socket.settimeout(15)
+    try:
+        request = client_socket.recv(2048).decode().split(CRLF)
+        request_headers = BytesParser().parsebytes(
+            request[1].encode())
+        start_line = request[0].split(' ')
+        http_method_name = start_line[0]
+        # print http body
+        decoded_msg = request[2]
+        if len(decoded_msg) > 0:
+            for i in range(0, len(decoded_msg)):
+                print("decoded msg: ", decoded_msg[i])
+            print("---------------------------------")
+
+        if http_method_name == GET or http_method_name == HEAD:
+            requested_file_name = start_line[1]
+            response = read_file(
+                request_headers, requested_file_name, http_method_name)
+            print(response)
+            client_socket.sendall(response.encode())
+            client_socket.shutdown(SHUT_WR)
+        else:  # bad request
+            response = create_header(400)
+            response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
+            client_socket.sendall(response.encode())
+            client_socket.shutdown(SHUT_WR)
+    except timeout:
+        print("408 Request Timed Out")
+        timeout_header = create_header(
+            HTTPStatus.REQUEST_TIMEOUT)
+        client_socket.sendall(timeout_header.encode())
+        client_socket.shutdown(SHUT_WR)
 
 if __name__ == '__main__':
     tcp_server = Server()
