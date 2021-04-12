@@ -98,7 +98,7 @@ class Server:
             print(exc)
             print(traceback.format_exc())
             sys.exit(1)
-        client_socket.close()
+
 
     def stop(self):
         self.isRunning = False
