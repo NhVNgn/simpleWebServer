@@ -14,7 +14,7 @@ CMD_MODIFIED = 'GET {}/test.html HTTP/1.1\r\n{}\r\n\r\n'.format(SERVER_URL, IF_M
 if __name__ == '__main__':
     with socket(AF_INET, SOCK_STREAM) as clientSocket:
         clientSocket.connect((HOST, SERVER_PORT))
-        #clientSocket.send(CMD_OK)
+        # clientSocket.send(CMD_OK)
 
         while True:
             data = clientSocket.recv(512)
