@@ -2,14 +2,16 @@ import sys
 import traceback
 from datetime import datetime
 from email.parser import BytesParser
+
+# Importing the status code enum to reduce hard-coded strings
 from http import HTTPStatus
+
 from io import BytesIO
 from os import stat
 from socket import *
-from socket import timeout
 
+# Constants used in the code.
 DATE_TIME_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
-
 TEST_HTML = 'test.html'
 HEAD = 'HEAD'
 GET = 'GET'
@@ -22,6 +24,10 @@ CRLF = '\r\n'
 
 
 def create_header(code):
+    """
+    Generate the response start line based on the given status code.
+    """
+
     header = ''
     if code == HTTPStatus.OK:
         header += 'HTTP/1.1 200 OK\n'
@@ -37,6 +43,10 @@ def create_header(code):
 
 
 def read_file(headers, requested_file_name, http_method_name):
+    """
+    Read a local HTML file.
+    """
+
     requested_file_name = requested_file_name.split('/')[1]
     if requested_file_name == '' or requested_file_name == 'favicon.ico':
         requested_file_name = TEST_HTML
@@ -70,6 +80,10 @@ class Server:
         self.isRunning = True
 
     def start(self):
+        """
+        Create a single-threaded server socket listening and handling incoming requests.
+        """
+
         try:
             with socket(AF_INET, SOCK_STREAM) as serverSocket:
                 serverSocket.bind((self.host, self.serverPort))
@@ -118,6 +132,10 @@ class Server:
             sys.exit(1)
 
     def stop(self):
+        """
+        Set isRunning to stop.
+        """
+
         self.isRunning = False
 
 

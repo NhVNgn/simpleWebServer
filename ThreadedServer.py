@@ -1,18 +1,20 @@
 import sys
+import threading
 import traceback
+from _thread import *
 from datetime import datetime
 from email.parser import BytesParser
+
+# Importing the status code enum to reduce hard-coded strings
 from http import HTTPStatus
+
 from io import BytesIO
 from os import stat
 from socket import *
-from socket import timeout
-import threading
 from threading import Thread
-from _thread import *
 
+# Constants used in the code.
 DATE_TIME_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
-
 TEST_HTML = 'test.html'
 HEAD = 'HEAD'
 GET = 'GET'
@@ -27,6 +29,10 @@ threads = []
 
 
 def create_header(code):
+    """
+    Generate the response start line based on the given status code.
+    """
+
     header = ''
     if code == HTTPStatus.OK:
         header += 'HTTP/1.1 200 OK\n'
@@ -42,13 +48,16 @@ def create_header(code):
 
 
 def read_file(headers, requested_file_name, http_method_name):
+    """
+    Read a local HTML file.
+    """
+
     requested_file_name = requested_file_name.split('/')[1]
     if requested_file_name == '' or requested_file_name == 'favicon.ico':
         requested_file_name = TEST_HTML
 
     try:
-        last_modified = datetime.fromtimestamp(
-            stat(requested_file_name).st_mtime)
+        last_modified = datetime.fromtimestamp(stat(requested_file_name).st_mtime)
         with open(requested_file_name) as file_in:
             if IF_MODIFIED_SINCE in headers and IF_NONE_MATCH not in headers:
                 # Check last modified date.
@@ -77,6 +86,9 @@ class Server:
         self.isRunning = True
 
     def start(self):
+        """
+        Create a multi-threaded server socket listening and handling incoming requests.
+        """
         try:
             with socket(AF_INET, SOCK_STREAM) as serverSocket:
                 serverSocket.bind((self.host, self.serverPort))
@@ -92,24 +104,32 @@ class Server:
 
         except KeyboardInterrupt:
             print("\nShutting down...\n")
-            for t in threads:
-                t.join()
+            self.stop()
+
         except Exception as exc:
+            self.stop()
             print("Error: \n")
             print(exc)
             print(traceback.format_exc())
             sys.exit(1)
 
     def stop(self):
+        """
+        Set isRunning to false and wait for threads to join.
+        """
         self.isRunning = False
+        for t in threads:
+            t.join()
 
 
 def newTCPServerThread(client_socket):
+    """
+    Thread listening for and handling incoming requests.
+    """
     client_socket.settimeout(15)
     try:
         request = client_socket.recv(2048).decode().split(CRLF)
-        request_headers = BytesParser().parsebytes(
-            request[1].encode())
+        request_headers = BytesParser().parsebytes(request[1].encode())
         start_line = request[0].split(' ')
         http_method_name = start_line[0]
         # print http body
@@ -121,8 +141,7 @@ def newTCPServerThread(client_socket):
 
         if http_method_name == GET or http_method_name == HEAD:
             requested_file_name = start_line[1]
-            response = read_file(
-                request_headers, requested_file_name, http_method_name)
+            response = read_file(request_headers, requested_file_name, http_method_name)
             print(response)
             client_socket.sendall(response.encode())
             client_socket.shutdown(SHUT_WR)
@@ -133,8 +152,7 @@ def newTCPServerThread(client_socket):
             client_socket.shutdown(SHUT_WR)
     except timeout:
         print("408 Request Timed Out")
-        timeout_header = create_header(
-            HTTPStatus.REQUEST_TIMEOUT)
+        timeout_header = create_header(HTTPStatus.REQUEST_TIMEOUT)
         client_socket.sendall(timeout_header.encode())
         client_socket.shutdown(SHUT_WR)
 
