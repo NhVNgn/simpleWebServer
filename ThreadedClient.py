@@ -1,3 +1,4 @@
+import signal
 import threading
 from socket import *
 
@@ -27,9 +28,12 @@ if __name__ == '__main__':
     try:
         ok_thread = threading.Thread(target=client_thread, args=[CMD_OK])
         modified_thread = threading.Thread(target=client_thread, args=[CMD_MODIFIED])
+        
         ok_thread.start()
         modified_thread.start()
-    except KeyboardInterrupt:
+
+        signal.pause()
+    except (KeyboardInterrupt, SystemExit):
         print("Shutting down multi-threaded client.")
 
     finally:

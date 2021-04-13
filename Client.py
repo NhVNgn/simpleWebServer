@@ -14,6 +14,9 @@ if __name__ == '__main__':
     with socket(AF_INET, SOCK_STREAM) as clientSocket:
         clientSocket.connect((HOST, SERVER_PORT))
         # clientSocket.send(CMD_OK)
+        # clientSocket.send(CMD_NOT_FOUND)
+        # clientSocket.send(CMD_BAD_REQ)
+        # clientSocket.send(CMD_MODIFIED)
 
         while True:
             data = clientSocket.recv(512)

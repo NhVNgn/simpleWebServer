@@ -1,3 +1,4 @@
+import signal
 import sys
 import threading
 import traceback
@@ -97,6 +98,7 @@ class Server:
                     new_server_thread = threading.Thread(target=new_tcp_server_thread, args=[client_socket])
                     new_server_thread.start()
                     running_threads.append(new_server_thread)
+                    signal.pause()
 
         except KeyboardInterrupt:
             print("\nShutting down...\n")
