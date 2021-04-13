@@ -18,8 +18,6 @@ GET = 'GET'
 IF_NONE_MATCH = 'If-None-Match'
 IF_MODIFIED_SINCE = 'If-Modified-Since'
 SERVER_PORT = 8000
-CHUNK_SIZE = 2048
-HTTP_VERSION = 1.1
 CRLF = '\r\n'
 
 
