@@ -22,8 +22,7 @@ IF_NONE_MATCH = 'If-None-Match'
 IF_MODIFIED_SINCE = 'If-Modified-Since'
 SERVER_PORT = 8000
 CRLF = '\r\n'
-thread_lock = threading.Lock()
-threads = []
+running_threads = []
 
 
 def create_header(code):
@@ -88,17 +87,16 @@ class Server:
         Create a multi-threaded server socket listening and handling incoming requests.
         """
         try:
-            with socket(AF_INET, SOCK_STREAM) as serverSocket:
-                serverSocket.bind((self.host, self.serverPort))
-                print("Starting server {}:{}".format(
-                    self.host, self.serverPort))
-                serverSocket.listen(5)
+            with socket(AF_INET, SOCK_STREAM) as server_socket:
+                server_socket.bind((self.host, self.serverPort))
+                print("Starting server {}:{}".format(self.host, self.serverPort))
+                server_socket.listen(5)
 
                 while self.isRunning:
-                    client_socket, client_address = serverSocket.accept()
-                    new_server_thread = threading.Thread(target=newTCPServerThread, args=[client_socket])
+                    client_socket, client_address = server_socket.accept()
+                    new_server_thread = threading.Thread(target=new_tcp_server_thread, args=[client_socket])
                     new_server_thread.start()
-                    threads.append(new_server_thread)
+                    running_threads.append(new_server_thread)
 
         except KeyboardInterrupt:
             print("\nShutting down...\n")
@@ -116,11 +114,11 @@ class Server:
         Set isRunning to false and wait for threads to join.
         """
         self.isRunning = False
-        for t in threads:
-            t.join()
+        for thread in running_threads:
+            thread.join()
 
 
-def newTCPServerThread(client_socket):
+def new_tcp_server_thread(client_socket):
     """
     Thread listening for and handling incoming requests.
     """
@@ -130,29 +128,20 @@ def newTCPServerThread(client_socket):
         request_headers = BytesParser().parsebytes(request[1].encode())
         start_line = request[0].split(' ')
         http_method_name = start_line[0]
-        # print http body
-        decoded_msg = request[2]
-        if len(decoded_msg) > 0:
-            for i in range(0, len(decoded_msg)):
-                print("decoded msg: ", decoded_msg[i])
-            print("---------------------------------")
 
         if http_method_name == GET or http_method_name == HEAD:
             requested_file_name = start_line[1]
             response = read_file(request_headers, requested_file_name, http_method_name)
-            print(response)
-            client_socket.sendall(response.encode())
-            client_socket.shutdown(SHUT_WR)
         else:  # bad request
             response = create_header(400)
             response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
-            client_socket.sendall(response.encode())
-            client_socket.shutdown(SHUT_WR)
+
+        print("Server thread id: {} returning response: {}".format(threading.get_ident(), response))
+        client_socket.sendall(response.encode())
     except timeout:
-        print("408 Request Timed Out")
         timeout_header = create_header(HTTPStatus.REQUEST_TIMEOUT)
+        print(timeout_header)
         client_socket.sendall(timeout_header.encode())
-        client_socket.shutdown(SHUT_WR)
 
 
 if __name__ == '__main__':

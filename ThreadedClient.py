@@ -8,13 +8,14 @@ IF_MODIFIED_HEADER = 'If-Modified-Since: Wed, 9 Apr 2021 07:28:00 GMT'
 SERVER_URL = '{}:{}'.format(HOST, SERVER_PORT)
 CMD_OK = 'GET {}/test.html HTTP/1.1\r\n\r\n'.format(SERVER_URL).encode()
 CMD_MODIFIED = 'GET {}/test.html HTTP/1.1\r\n{}\r\n\r\n'.format(SERVER_URL, IF_MODIFIED_HEADER).encode()
+running_threads = []
 
 
 def client_thread(msg):
     with socket(AF_INET, SOCK_STREAM) as client_socket:
         client_socket.connect((HOST, SERVER_PORT))
+        client_socket.send(msg)
         while True:
-            client_socket.send(msg)
             data = client_socket.recv(512)
             if len(data) < 1:
                 return
@@ -30,4 +31,7 @@ if __name__ == '__main__':
         modified_thread.start()
     except KeyboardInterrupt:
         print("Shutting down multi-threaded client.")
-        sys.exit(1)
+
+    finally:
+        for thread in running_threads:
+            thread.join()

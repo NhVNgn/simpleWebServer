@@ -107,16 +107,15 @@ class Server:
                             requested_file_name = start_line[1]
                             response = read_file(request_headers, requested_file_name, http_method_name)
                             print(response)
-                            client_socket.sendall(response.encode())
-                            client_socket.shutdown(SHUT_WR)
                         else:  # bad request
                             response = create_header(400)
                             response += "<html><body><h1>Error 400: Bad Request</h1></body></html>"
-                            client_socket.sendall(response.encode())
-                            client_socket.shutdown(SHUT_WR)
+
+                        client_socket.sendall(response.encode())
+                        client_socket.shutdown(SHUT_WR)
                     except timeout:
-                        print("408 Request Timed Out")
                         timeout_header = create_header(HTTPStatus.REQUEST_TIMEOUT)
+                        print(timeout_header)
                         client_socket.sendall(timeout_header.encode())
                         client_socket.shutdown(SHUT_WR)
         except KeyboardInterrupt:
